@@ -1,0 +1,30 @@
+Package: ComplexSim
+Title: ComplexSim: Simulate high dimensional Omics data with covariance structure with time and subjects
+Version: 0.0.0.9000
+Authors@R: 
+    person("First", "Last", , "first.last@example.com", role = c("aut", "cre"),
+           comment = c(ORCID = "YOUR-ORCID-ID"))
+Description: This R package allows simulation using both Gaussian and Negative Binomial distribution with different set ups of the parameters, that is, mean and variance of Gaussian, mean and dispersion parameter of Negative Binomial, and one can switch between the two distributions to get equivalent simulation for benchmarking different models. The simulation functions have flexible parametrization that represent the treatment effect, time effect, correlation structure and subject level variability and correlation. One can use the simulation functions to explore different designs and the impact on the data. 
+License: `use_mit_license()`, `use_gpl3_license()` or friends to pick a
+    license
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.2.3
+Depends:
+    R (>= 3.5.0),
+    stats,
+    methods,
+    utils,
+    graphics,
+    rlang
+Imports:
+    purrr,
+    emmeans,
+    reshape2,
+    dplyr,
+    ggplot2,
+    nlme,
+    RhpcBLASctl
+Suggests: 
+    ggplot2, knitr, rmarkdown
+VignetteBuilder: knitr

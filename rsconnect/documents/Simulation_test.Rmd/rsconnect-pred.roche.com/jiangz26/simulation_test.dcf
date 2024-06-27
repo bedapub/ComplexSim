@@ -1,0 +1,13 @@
+name: simulation_test
+title: Simulation_test
+username: jiangz26
+account: jiangz26
+server: rsconnect-pred.roche.com
+hostUrl: https://rsconnect-pred.roche.com/__api__
+appId: 756
+bundleId: 3585
+url: https://rsconnect-pred.roche.com/content/ba8fb54f-fd79-45e5-a589-5d288bb33ad5/
+when: 1692952622.02221
+lastSyncTime: 1692952622.02222
+asMultiple: FALSE
+asStatic: TRUE

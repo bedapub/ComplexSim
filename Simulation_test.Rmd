@@ -1,0 +1,659 @@
+---
+title: "Simulation using ComplexSim - test version"
+author: " "
+date: '`r format(Sys.time(), "%d %B, %Y")`'
+params:
+  Sample_size:
+    label: "Simulated sample size (number of patients)"
+    value: 50
+  N_Genes:
+    label: "Simulated number of genes"
+    value: 100
+  Time_points:
+    label: "Number of time points when repeated measures are taken"
+    value: 5
+  Group_total:
+    label: "Number of groups"
+    value: 3
+  Control_group_total:
+    label: "Number of control groups"
+    value: 1
+  Treatment_group_total:
+    label: "Number of treatment groups"
+    value: 2
+  Multi_treatment:
+    label: "Each sample takes all the treatments and controls in independent environments"
+    value: "Y"
+  eps_dependent:
+    label: "Proportion of dependent subjects in different groups, should be 1 by default if Multi_treatment = Y. "
+    value: 0.2
+  eps_SignalGenes: 
+    label: "Proportion of true signal genes"
+    value: 0.2
+  beta0:
+    label: "Average effect"
+    value: 0
+  beta1:
+    label: "Treatment group effect"
+    value: 4
+  beta2:
+    label: "Time effect"
+    value: 2
+  mu:
+    label: "Mean of the Gaussian vector defining random intercept and slope"
+    value: [0,0]
+  sigma:
+    lable: "Variance of the Gaussian vector defining random intercept and slope"
+    value: 1.5
+  tau:
+    label: "Variance-covariance elements of the random intercept and slope"
+    value: [1,1,0]
+  act.cor:
+    value: 0.6
+  Sub_xy:
+    label: "Subject-level correlation defined on the pairs of subjects."
+    value: !expr list(c(1,2), c(2,3), c(1,3), c(4,7))
+  Sub_corr:
+    lable: "Pairwise subject-level correlation coefficient."
+    value: [0.8, 0.6, 0.3, 0.8]
+  sigma_RE:
+    label: "Standard deviation of the random block factor."
+    value: 0.8
+  Rep_corr:
+    label: ""
+    value: 0.6
+  Balanced_visit:
+    label: "Each sample has same number of visits"
+    value: "Y"
+  Fixed_form:
+    label: "Basic linear model with fixed effects"
+    value: "Exprs ~ 0 + GROUP*VISIT"
+  Mixed_form:
+    label: "Mixed-effect model"
+    value: "Exprs ~ GROUP + VISIT + (1|ID)"
+  RunPkg_dependence:
+    value: TRUE
+  Run_parallel:
+    value: TRUE
+editor_options: 
+  chunk_output_type: console
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Simulation}
+  %\VignetteEncoding{UTF-8}
+  %\VignetteEngine{knitr::rmarkdown}
+---
+
+```{r setup, include=FALSE}
+# knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(eval = T, echo = TRUE, results = 'asis', 
+                      message = F, warning = F, error = T,
+                      width = 120)
+```
+
+
+```{r packages}
+library(MASS)
+library(utils)
+library(nlme)
+library(edgeR)
+# library(parallel) ##
+library(RhpcBLASctl) ##
+# library(CovStructRM) ## 
+library(emmeans)
+library(reshape2)
+library(tidyverse)
+library(ComplexSim)
+
+source("./R/sim_all.R")
+
+theme_set(theme_bw())
+```
+
+# Introduction
+
+When we have group effect, repeated measures and subject level variability in the experiment, we usually define a mixed effect linear model as 
+\begin{equation}
+y_{ijk} = \beta_0 + \beta_i + \beta_j + \alpha_k + \lambda_{ij} + \varepsilon_{ijk}, 
+\end{equation}
+where the individual-level random effect $\alpha_k$ can be regarded as `random intercept`. 
+
+In order to include both random intercept and random slope, we should consider the model
+
+\begin{equation}
+y_{ijk} = \left( \beta_0 + \alpha_k^{(0)} \right)+ \left(\beta_1 + \alpha_k^{(1)} \right) x_{ijk}  + \varepsilon_{ijk}. 
+\end{equation}
+
+The goal of this vignette is to provide several examples of different designs and a comparison of the performance of different approaches to fit the models.
+
+
+# The design 1
+
+In the first example we provide the simulation with the following design:
+
+* Each individual has samples in multiple groups
+* With repeated measures
+
+## Create simulated data
+
+The function `wrap_design` gives the desired model structure. One can define a data matrix by inserting 
+
+* `n` = number of patients in each group,  
+* `m` = number of repeated visits (time points),
+* `q` = number of groups (eg., control and multiple treatment groups)
+* `SingleGroup = FALSE` indicates that each patient has samples in multiple groups.
+
+```{r Simulateion design 1, results='markup'}
+#############################################################
+###
+### TEST 
+###
+#############################################################
+dat <- wrap_design(n = params$Sample_size, 
+                   m = params$Time_points, 
+                   q = params$Group_total,
+                   SingleGroup = FALSE, 
+                   eps = FALSE)
+
+dat %>% distinct(ID, GROUP, VISIT) %>% 
+  dplyr::count(GROUP, VISIT) %>% knitr::kable()
+
+dat[1:10, ] %>%  knitr::kable()
+```
+
+The function `wrap_simulation` uses the model structure as input, and generates the simulated data set in a long format data frame.
+
+* `data` = Design matrix in long format. 
+* $\beta_0$ = Mean of the global effect.
+* $\beta_1$ = Mean of group effect.
+* $\beta_2$ = Mean of time effect. 
+* $\Lambda$ = Coefficient of interaction terms. 
+* $\sigma$ = Standard deviation of the simulated AR(1) sequence.
+* $\mu$ = Mean vector of random intercept and slope. 
+* $\tau$ = Elements of variance-covariance matrix of random intercept and slope.
+* `act.cor` = Correlation parameter of the AR(1) structure.
+
+```{r, results='markup'}
+dat <- wrap_simulation(data = dat, 
+                       SingleGroup = FALSE, 
+                       beta0 = params$beta0,
+                       beta1 = params$beta1*(1:params$Group_total),
+                       beta2 = log((params$beta2*(1:params$Time_points+1))),
+                       lambda = NULL,
+                       sigma = params$sigma,
+                       mu = params$mu,
+                       act.cor = params$act.cor,
+                       tau = params$tau) 
+
+dat$GeneName <- "GENE_1"
+dat[1:10, ] %>%  knitr::kable()
+```
+
+Plot profile
+
+```{r}
+### Plot profile
+plot_prof(dat)
+
+# ### Plot difference
+# prof_diff(dat)
+# 
+# ### Plot difference
+# plot_diff(prof_diff(dat))
+
+```
+
+Empirical correlation
+
+```{r Empirical correlation design 1, results='markup', eval=FALSE}
+### Corr
+# CovCor_err(dat, condition = "Group2")
+# 
+# CovCor_err(dat, condition = "Group3")
+
+### Plot corr
+CovCor_err(dat, condition = "Group2", plot.line = TRUE)
+CovCor_err(dat, condition = "Group2", plot.heat = TRUE)
+
+CovCor_err(dat, condition = "Group3", plot.line = TRUE)
+CovCor_err(dat, condition = "Group3", plot.heat = TRUE)
+```
+
+
+# The design 2
+
+## Create simulated data
+
+```{r Simulate design 2}
+#############################################################
+###
+### TEST 
+###
+#############################################################
+dat <- wrap_design(n = params$Sample_size, 
+                   m = params$Time_points, 
+                   q = params$Group_total, 
+                   SingleGroup = TRUE,
+                   eps = FALSE)
+### 
+dat <- wrap_simulation(dat, 
+                       SingleGroup = TRUE, 
+                       beta0 = params$beta0,
+                       beta1 = params$beta1*(1:params$Group_total),
+                       beta2 = log((params$beta2*(1:params$Time_points+1))),
+                       lambda = NULL,
+                       sigma = params$sigma,
+                       mu = params$mu,
+                       tau = params$tau,
+                       act.cor = params$act.cor) ### Variables
+dat$GeneName <- "GENE_1"
+# dat[1:10, ] %>%  knitr::kable()
+# dat[90:100, ] %>%  knitr::kable()
+```
+
+Plot profile
+
+```{r}
+### Plot profile
+plot_prof(dat)
+
+# ### Plot difference
+# prof_diff(dat)
+# 
+# ### Plot difference
+# plot_diff(prof_diff(dat))
+
+```
+
+Empirical correlation
+
+```{r, results='markup', eval=FALSE}
+### Corr
+# CovCor_err(dat, condition = "Group2")
+# CovCor_err(dat, condition = "Group3")
+
+### Plot corr
+CovCor_err(dat, condition = "Group2", plot.line = TRUE)
+CovCor_err(dat, condition = "Group2", plot.heat = TRUE)
+
+CovCor_err(dat, condition = "Group3", plot.line = TRUE)
+CovCor_err(dat, condition = "Group3", plot.heat = TRUE)
+```
+
+
+# The design 3
+
+For example, we consider the following scenario:
+
+* Group 1: P1, P2, P3, P4, P5, P6, P7, P8, P9, P10
+* Group 2: P1, P2, P13, P14, P15, P16, P17, P18, P19, P20
+* Group 3: P1, P2, P23, P24, P25, P26, P27, P28, P29, P30
+
+Suppose P1 and P2 appear repeatedly in Group 1, 2 and 3. 
+They can also be regarded as highly correlated samples instead of identical ones in different groups. 
+
+**Based on design 2, we now have `SingleGroup=TRUE`, sample size in each group `n=10` and the ratio of identical sample `eps=0.2`.** 
+The number of repeated subjects is $n\varepsilon = 2$. 
+All the other subjects are independent. 
+
+Let $y_{ijk}$ be the normalized data of individual $k$ in group $i$, at time point $j$. With the relationship between $i$ and $k$, we have the following setting: 
+The total number of subjects in each group are identical: $n_1 = n_2 = \cdots = n.$ 
+There are repeated subjects nRep and independent subjects (n - nRep) in each group. 
+
+
+## Create simulated data
+
+```{r Simulate design 3}
+#############################################################
+###
+### TEST 
+###
+#############################################################
+dat <- wrap_design(n = params$Sample_size, 
+                   m = params$Time_points, 
+                   q = params$Group_total, 
+                   SingleGroup = TRUE, 
+                   eps = params$eps_dependent)
+### 
+dat <- wrap_simulation(dat, 
+                       SingleGroup = TRUE, 
+                       beta0 = params$beta0,
+                       beta1 = params$beta1*(1:params$Group_total),
+                       beta2 = log((params$beta2*(1:params$Time_points+1))),
+                       lambda = NULL,
+                       sigma = params$sigma,
+                       mu = params$mu,
+                       tau = params$tau,
+                       act.cor = params$act.cor) ### Variables
+dat$GeneName <- "GENE_1"
+# dat[1:10, ] %>%  knitr::kable()
+# dat[90:100, ] %>%  knitr::kable()
+```
+
+Plot profile
+
+```{r}
+### Plot profile
+plot_prof(dat)
+```
+
+Empirical correlation
+
+```{r, results='markup', eval=FALSE}
+# ### Corr
+# CovCor_err(dat, condition = "Group2")
+# 
+# CovCor_err(dat, condition = "Group3")
+
+### Plot corr
+CovCor_err(dat, condition = "Group2", plot.line = TRUE)
+CovCor_err(dat, condition = "Group2", plot.heat = TRUE)
+
+CovCor_err(dat, condition = "Group3", plot.line = TRUE)
+CovCor_err(dat, condition = "Group3", plot.heat = TRUE)
+```
+
+
+# Simulate i.i.d. gene set 
+
+Now we use function `wrap_sim_DGE` to simulate the expression data for more than one genes, and convert the readouts to a DGEList. 
+
+```{r Create iid DGEList, message=FALSE, results='markup', warning=FALSE}
+trt_genewise <- matrix(seq(1:(params$Group_total*params$N_Genes)),
+                       ncol=params$N_Genes)
+
+sim_DGEList <- wrap_sim_DGEList(n=params$Sample_size, 
+                                m=params$Time_points, 
+                                q=params$Group_total, 
+                                params$N_Genes, 
+                                trt_eff = trt_genewise, 
+                                SingleGroup=FALSE)
+str(sim_DGEList)
+```
+
+
+```{r, results='markup'}
+# head(sim_DGEList$norm_counts)
+head(sim_DGEList$pheno_data)
+```
+
+# Simulate mixture of genes with user-defined structure 
+
+
+With default params:
+
+```{r Simulate default mixture genes, results='markup'}
+dat <- wrap_design(n = params$Sample_size, 
+                   m = params$Time_points, 
+                   q = params$Group_total, 
+                   SingleGroup = TRUE)
+# view(dat)
+### 
+# dat <- wrap_simulation(dat, SingleGroup = TRUE, tau = c(1,1,0)) ### Variables
+sim_DGEList <- wrap_sim_corr(dat, 
+                             N = params$N_Genes, 
+                             eps_Signal = params$eps_SignalGenes, 
+                             SingleGroup = TRUE, 
+                             act.cor = NULL)
+
+# head(sim_DGEList$norm_counts, 1)
+
+# DT::datatable(sim_DGEList$pheno_data)
+```
+
+
+# With user-defined params
+
+<!-- ## TO DO: parametrize the functions used in generating the group mean vector per gene. Is there an easy way to do it? (ZJ) -->
+
+```{r Simulate arbitrary gene set, results='markup'}
+dat <- wrap_design(n = params$Sample_size, 
+                   m = params$Time_points, 
+                   q = params$Group_total, 
+                   SingleGroup = TRUE)
+# dat <- wrap_simulation(dat, SingleGroup = TRUE, tau = c(1,1,0)) ### Variables
+G_Signal <- ceiling(params$N_Genes*params$eps_SignalGenes)
+G_Null <- params$N_Genes - G_Signal 
+
+coef.beta2_Signal <- lapply(1:G_Signal, 
+                            function(x) {seq(1, params$Time_points, length = params$Time_points)})
+coef.beta2_null <- lapply(1:G_Null, 
+                                function(x) {rep(0, params$Time_points)})
+Time_effect <- c(coef.beta2_Signal, coef.beta2_null)
+
+
+coef.beta1_Signal <- lapply(1:G_Signal, 
+                                  function(x) {seq(1, 2*params$Group_total, length = params$Group_total)})
+coef.beta1_null <- lapply(1:G_Null, 
+                                function(x) {rep(0, params$Group_total)})
+TRT_effect <- c(coef.beta1_Signal, coef.beta1_null)
+
+###
+sim_DGEList <- wrap_sim_corr(dat, 
+                             params$N_Genes, 
+                             params$eps_SignalGenes, 
+                             SingleGroup = TRUE,
+                             coef.beta2 = Time_effect, 
+                             act.cor = NULL)
+
+# head(sim_DGEList$norm_counts, 1)
+
+# DT::datatable(sim_DGEList$pheno_data)
+```
+
+## Dependent subjects
+
+One can simulate arbitrary gene sets with user defined correlated subjects.
+
+<!-- ## TO DO: Modify the elements according to the list given in yaml params. -->
+
+```{r Simulate arbitrary gene set with dependent subjects, results='markup'}
+### test the simulation with covariance
+corr_Sub = diag(params$Sample_size*params$Group_total) 
+
+for (i in 1:length(params$Sub_corr)) {
+corr_Sub[params$Sub_xy[[i]][1], params$Sub_xy[[i]][2]] = params$Sub_corr[i]^2
+corr_Sub[params$Sub_xy[[i]][2], params$Sub_xy[[i]][1]] = params$Sub_corr[i]^2
+}
+CovHeatPlot(corr_Sub[1:params$Sample_size, 1:params$Sample_size])
+CovHeatPlot(corr_Sub[1:10, 1:10])
+sigma_Group = c(1:params$Group_total)
+
+corr_Rep = fVarAR1(0.6, params$Time_points)
+sigma_Rep = seq(1, 2, length=params$Time_points)
+
+SimCov <- CovMarginal_sim(corr_Sub, sigma_Group, corr_Rep, sigma_Rep) 
+
+DT::datatable(SimCov[1:params$Sample_size, 1:params$Sample_size])
+# View(SimCov)
+# ComplexHeatmap::pheatmap(corr_Sub, cluster_rows = FALSE, cluster_cols = FALSE)
+
+CovHeatPlot(SimCov[1:params$Sample_size, 1:params$Sample_size])
+# CovHeatPlot(SimCov[1:10, 1:10])
+
+# View(SimCov[c(1:10, 41:50), c(1:10, 41:50)])
+# CovHeatPlot(SimCov[c(1:10, 41:50), c(1:10, 41:50)])
+
+sim_DGEList <- wrap_sim_corr(dat, 
+                             params$N_Genes,
+                             params$eps_SignalGenes, 
+                             SingleGroup = TRUE,
+                             coef.beta1 = TRT_effect,
+                             coef.beta2 = Time_effect, 
+                             CovMarginal = SimCov,
+                             act.cor = NULL)
+
+str(sim_DGEList)
+```
+
+
+```{r, eval=FALSE}
+# save simulated data to file
+filename = paste0(getwd(), "/data/Simulation_ArbitraryFamily.csv")
+
+norm_counts_wider <- t(sim_DGEList$norm_counts) %>% as.data.frame() %>%
+  rownames_to_column(., var = "SampleID") 
+annot_table <- sim_DGEList$pheno_data %>% as.data.frame() %>%
+  rownames_to_column(., var = "SampleID") %>%
+  mutate(FAMILY = ID)
+ListFamily <- lapply(1:length(params$Sub_xy), function(n){paste0("P", params$Sub_xy[[n]])} ) 
+unlistFamily <- data.frame()
+for (FamilyNum in 1:length(ListFamily)) {
+  aFamily <- data.frame(SUBID = ListFamily[[FamilyNum]],
+               FAMILY = paste0("Family_", FamilyNum))
+  unlistFamily <- rbind(unlistFamily, aFamily) 
+}
+FamilyCluster <- unlistFamily %>% group_by(SUBID) %>% dplyr::summarise(UniqueFamily = n()) %>% filter(UniqueFamily > 1) %>% pull(SUBID)
+for (PID in FamilyCluster) {
+  unlistFamily_Unique <- unlistFamily %>% 
+    filter(ID %in% PID)
+}
+# for (FamilyNum in unlistFamily$FAMILY ) {
+# }
+for (FamilyNum in 1:length(ListFamily)) {
+  annot_table <- annot_table %>% mutate(
+    FAMILY = ifelse(ID %in% ListFamily[[FamilyNum]], paste0("Family_", FamilyNum), FAMILY)
+  )
+}
+norm_counts_wider <- annot_table %>% left_join( norm_counts_wider, by=c("SampleID"))
+
+norm_counts_long <- norm_counts_wider %>% tidyr::pivot_longer(
+  cols=!(c("SampleID", "ID", "FAMILY",  "VISIT", "GROUP")),
+  names_to = "GeneName", 
+  values_to = "Exprs")
+
+sim_DGE_long_ArbitraryFamily <- norm_counts_long
+
+write.csv(sim_DGE_long_ArbitraryFamily, file = filename)
+```
+
+## Twins
+
+```{r Simulate_TWINS}
+params$Sub_corr <- rep(0.95, params$Sample_size*params$Group_total/2) 
+params$Sub_xy <- ListTwins <- list()
+for (Twins in 1:( params$Sample_size*params$Group_total/2) ) {
+  ListTwins[[Twins]] <- c(2*Twins-1, 2*Twins)
+}
+params$Sub_xy <- ListTwins
+corr_Sub = diag(params$Sample_size*params$Group_total) 
+
+for (i in 1:length(params$Sub_corr)) {
+corr_Sub[params$Sub_xy[[i]][1], params$Sub_xy[[i]][2]] = params$Sub_corr[i]^2
+corr_Sub[params$Sub_xy[[i]][2], params$Sub_xy[[i]][1]] = params$Sub_corr[i]^2
+}
+CovHeatPlot(corr_Sub[1:params$Sample_size, 1:params$Sample_size])
+CovHeatPlot(corr_Sub[1:10, 1:10])
+sigma_Group = c(1:params$Group_total)
+
+corr_Rep = fVarAR1(0.6, params$Time_points)
+sigma_Rep = seq(1, 2, length=params$Time_points)
+
+SimCov_TwinsAR <- CovMarginal_sim(corr_Sub, sigma_Group, corr_Rep, sigma_Rep)
+
+sigma_RE <- params$sigma_RE
+SimCov <- CovMarginal_sim(corr_Sub, sigma_Group, corr_Rep, sigma_Rep, sigma_RE) 
+
+DT::datatable(SimCov[1:params$Sample_size, 1:params$Sample_size])
+
+CovHeatPlot(SimCov[1:params$Sample_size, 1:params$Sample_size])
+CovHeatPlot(SimCov_TwinsAR[1:params$Sample_size, 1:params$Sample_size])
+
+set.seed(123) ## 
+sim_DGEList <- wrap_sim_corr(dat, 
+                             params$N_Genes,
+                             params$eps_SignalGenes, 
+                             SingleGroup = TRUE,
+                             coef.beta1 = TRT_effect,
+                             coef.beta2 = Time_effect, 
+                             CovMarginal = SimCov,
+                             act.cor = NULL)
+
+# str(sim_DGEList)
+
+set.seed(1) ## 
+sim_DGEList <- wrap_sim_corr(dat, 
+                             params$N_Genes,
+                             params$eps_SignalGenes, 
+                             SingleGroup = TRUE,
+                             coef.beta1 = TRT_effect,
+                             coef.beta2 = Time_effect, 
+                             CovMarginal = SimCov_TwinsAR,
+                             act.cor = NULL)
+
+# str(sim_DGEList)
+```
+
+Design and contrast
+
+```{r, eval=FALSE}
+## wide and long data frame
+norm_counts_wider <- t(sim_DGEList$norm_counts) %>% as.data.frame() %>%
+  rownames_to_column(., var = "SampleID") 
+annot_table <- sim_DGEList$pheno_data %>% as.data.frame() %>%
+  rownames_to_column(., var = "SampleID") 
+norm_counts_wider <- annot_table %>% left_join( norm_counts_wider, by=c("SampleID"))
+
+norm_counts_long <- norm_counts_wider %>% tidyr::pivot_longer(
+  cols=!(c("SampleID", "ID", "VISIT", "GROUP")),
+  names_to = "GeneName", 
+  values_to = "Exprs")
+```
+
+
+```{r Add_Family_Info}
+norm_counts_wider <- t(sim_DGEList$norm_counts) %>% as.data.frame() %>%
+  rownames_to_column(., var = "SampleID") 
+annot_table <- sim_DGEList$pheno_data %>% as.data.frame() %>%
+  rownames_to_column(., var = "SampleID") %>%
+  mutate(FAMILY = ID)
+ListFamily <- lapply(1:length(params$Sub_xy), function(n){paste0("P", params$Sub_xy[[n]])} ) 
+for (FamilyNum in 1:length(ListFamily)) {
+  annot_table <- annot_table %>% mutate(
+    FAMILY = ifelse(ID %in% ListFamily[[FamilyNum]], paste0("Family_", FamilyNum), FAMILY)
+  )
+}
+
+norm_counts_wider <- annot_table %>% left_join( norm_counts_wider, by=c("SampleID"))
+
+norm_counts_long <- norm_counts_wider %>% tidyr::pivot_longer(
+  cols=!(c("SampleID", "ID", "FAMILY",  "VISIT", "GROUP")),
+  names_to = "GeneName", 
+  values_to = "Exprs")
+
+```
+
+
+Write the simulated twins data to file:
+
+```{r, eval=FALSE}
+## save simulated data to file (converge)
+# filename = paste0(getwd(), "/data/Simulation_TwinsAR.csv")
+# sim_DGE_long_Twins <- norm_counts_long
+# write.csv(sim_DGE_long_Twins, file = filename)
+
+# Simulation_Twins <- read_csv("data/Simulation_Twins.csv")
+# norm_counts_long <- Simulation_Twins
+
+filename = paste0(getwd(), "/data/Simulation_TwinsCS_Seed123.csv")
+sim_DGE_long_TwinsCS <- norm_counts_long
+write.csv(sim_DGE_long_TwinsCS, file = filename)
+
+filename = paste0(getwd(), "/data/Simulation_TwinsAR_Seed1.csv")
+sim_DGE_long_TwinsAR <- norm_counts_long
+write.csv(sim_DGE_long_TwinsAR, file = filename)
+```
+
+
+```{r plot null and signal genes}
+### GENE name
+plot_prof(norm_counts_long %>% filter(GeneName %in% c("GENE_1", "GENE_50")))
+# DT::datatable(norm_counts_long)
+```
+
+
+
+```{r}
+sessionInfo()
+```
+

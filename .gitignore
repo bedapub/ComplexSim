@@ -1,0 +1,57 @@
+
+
+#### Github R defaults
+# History files
+.Rhistory
+.Rapp.history
+.Ruserdata
+# Any R Data files
+*.RData
+*.rds
+# RStudio files
+*.Rproj
+.Rproj.user/
+.Rproj.user
+# Temporary files created by R markdown
+*.utf8.md
+*.knit.md
+# Temp dir
+*/results/
+*/results*
+
+# OAuth2 token, see https://github.com/hadley/httr/releases/tag/v0.3
+.httr-oauth
+# other data files
+*.html
+# data files
+*.tsv
+*.csv
+*.gct
+*.xlsx
+# docs
+*.docx
+*.pptx
+## *.pdf
+*.png
+*.jpg
+
+# Output files from R CMD build
+/*.tar.gz
+# Output files from R CMD check
+/*.Rcheck/
+
+# produced vignettes
+vignettes/*.html
+vignettes/*.pdf
+
+# knitr and R markdown default cache directories
+/*_cache/
+/cache/
+
+test_*
+
+Meta
+# gh-pages branch is used for pkgdown, don't upload docs
+docs
+/doc/
+/Meta/
