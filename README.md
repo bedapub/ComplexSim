@@ -4,7 +4,9 @@ The simulation function includes the Gaussian and Negative Binomial distribution
 
 # Installation
 ```{r}
-devtools::install_github("BEDApub/ComplexSim")
+devtools::install_github("BEDApub/ComplexSim", build_vignettes = TRUE)
+
+vignette("ComplexSim", package = "ComplexSim")
 ```
 
 
