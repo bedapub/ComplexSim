@@ -31,17 +31,25 @@ If $r \to \infty$,\, $\sigma^2 = \mu$ corresponds to Poisson case.
 
 Alternatively, one can normalize the count data by using the log-cpm described as follows. Let $\left(r_{gi}\right)_{G \times n}$ be the matrix of counts for $n$ RNA samples and $G$ genes.
  For sample $i$, the total number of mapped reads is $R_{i}=\sum_{g=1}^{G} r_{g i}$, and we usually compute the log-counts per million (log-cpm): 
+ 
 $$y_{g i}=\log _{2}\left(\frac{r_{g i}+0.5}{R_{i}+1.0} \times 10^{-6}\right).$$ 
+
 This re-scaling of the count data can be considered as the simplest way of normalization, and the normalized data is usually considered as Gaussian. We use both Gaussian and Negative Binomial distribution to simulate the normalized and raw gene expression data.
 
 Consider a read count $r$ and library size $R$.  
-The expected value is defined as  $\lambda=\mathrm{E}(r)$, and we obtain the variance decomposition 
+The expected value is defined as  $\lambda=\textbf{E}(r)$, and we obtain the variance decomposition 
+
 $$\operatorname{Var}(r)=\lambda+\phi \lambda^{2}, $$ 
+
 which corresponds to $ \sigma^2 = \mu + \frac{1}{r} \mu^2 $ for negative binomial distribution.
 Therefore, the log-cpm value  can be approximated by
+
  $$y \approx \log _{2}(r) -\log _{2}(R)+6 \log _{2}(10), $$
+ 
 and has variance
- $$\operatorname{Var}(y) \approx \operatorname{Var}\left(\log _{2}(r)\right) \approx \frac{\operatorname{Var}(r)}{\lambda^{2}}=\frac{1}{\lambda}+\phi$$   
+
+ $$\operatorname{Var}(y) \approx \operatorname{Var}\left(\log _{2}(r)\right) \approx \frac{\operatorname{Var}(r)}{\lambda^{2}}=\frac{1}{\lambda}+\phi$$  
+ 
  following the Delta-method.
 The mean and variance of the normalized sequencing data is linked to the original mean and dispersion of the negative binomial data and can be modeled and estimated. 
 
