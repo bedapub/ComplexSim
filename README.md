@@ -7,11 +7,11 @@ RNA sequencing data in discrete count unit can be described by a negative binomi
 
 Following the RNA sequencing procedure, we build the negative binomial model for the mapped read counts: 
 
-$$\mathrm{NB}(r,p): \, \mathrm{Pr}(X=k) = \binom{k+r-1}{k}\cdot(1-p)^{r} p^{k} .$$ 
+$$\mathrm{NB}(r,p):  \mathrm{Pr}(X=k) = \binom{k+r-1}{k}\cdot(1-p)^{r} p^{k} .$$ 
 
 The mean and variance of this negative binomial distribution are 
 
-$$ \mu= \frac{p r}{1-p} \quad \text{ and } \quad \sigma^2 = \frac{pr}{(1-p)^2}\,. $$
+$$ \mu= \frac{p r}{1-p} \quad \text{ and } \quad \sigma^2 = \frac{pr}{(1-p)^2}. $$
 
 One important proposition of the gene expression count data is the over-despersion property. We can use the variance-mean ratio or taking the difference between the variance and the mean to quantify the dispersion. The ratio is given by
 
@@ -29,13 +29,7 @@ $$ \sigma^2 = \mu + \frac{1}{r} \mu^2 . $$
 
 If $r \to \infty$\, $\sigma^2 = \mu$ corresponds to Poisson case. 
 
-Alternatively, one can normalize the count data by using the log-cpm described as follows. Let 
-$\left(r_{gi}\right)_{G \times n}$ 
-be the matrix of counts for 
-$n$
-RNA samples and 
-$G$
-genes.
+Alternatively, one can normalize the count data by using the log-cpm described as follows. Let $(r_{gi})_{G \times n}$ be the matrix of counts for $n$ RNA samples and $G$ genes.
  For sample $i$, the total number of mapped reads is $R_{i}=\sum_{g=1}^{G} r_{g i}$, and we usually compute the log-counts per million (log-cpm): 
  
 $$y_{g i}=\log _{2}\left(\frac{r_{g i}+0.5}{R_{i}+1.0} \times 10^{-6}\right).$$ 
