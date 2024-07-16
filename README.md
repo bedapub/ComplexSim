@@ -45,7 +45,7 @@ This re-scaling of the count data can be considered as the simplest way of norma
 Consider a read count $r$ and library size $R$.  
 The expected value is defined as  $\lambda=\textbf{E}(r)$, and we obtain the variance decomposition 
 
-$$\operatorname{Var}(r)=\lambda+\phi \lambda^{2}, $$ 
+$$\textbf{Var}(r)=\lambda+\phi \lambda^{2}, $$ 
 
 which corresponds to $ \sigma^2 = \mu + \frac{1}{r} \mu^2 $ for negative binomial distribution.
 Therefore, the log-cpm value  can be approximated by
