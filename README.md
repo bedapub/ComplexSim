@@ -29,7 +29,7 @@ $$ \sigma^2 = \mu + \frac{1}{r} \mu^2 . $$
 
 If $r \to \infty$\, $\sigma^2 = \mu$ corresponds to Poisson case. 
 
-Alternatively, one can normalize the count data by using the log-cpm described as follows. Let $(r_{gi})_{G \times n}$ be the matrix of counts for $n$ RNA samples and $G$ genes.
+Alternatively, one can normalize the count data by using the log-cpm described as follows. Let $`(r_{gi})_{G \times n}`$ be the matrix of counts for $n$ RNA samples and $G$ genes.
  For sample $i$, the total number of mapped reads is $R_{i}=\sum_{g=1}^{G} r_{g i}$, and we usually compute the log-counts per million (log-cpm): 
  
 $$y_{g i}=\log _{2}\left(\frac{r_{g i}+0.5}{R_{i}+1.0} \times 10^{-6}\right).$$ 
