@@ -18,10 +18,10 @@ One important proposition of the gene expression count data is the over-despersi
 $$ \frac{\sigma^2}{\mu} = \frac{1}{1-p} >1, $$
 
 and the difference is 
-$$
+```math
  \sigma^2 - \mu = p\cdot \frac{pr}{(1-p)^2} = p \sigma^2 \geq 0\quad \text{or equivalently} \quad 
  \sigma^2 - \mu = \frac{1}{r} \cdot \frac{p^2 r^2}{(1-p)^2} = \frac{1}{r} \mu^2 \geq 0 . 
-$$
+```
 From the ratio and the difference, it is obvious to see that the counts of mapped reads which follow the negative binomial distribution is over dispersed. 
 The variance can be decomposed to
 
@@ -48,7 +48,7 @@ Therefore, the log-cpm value  can be approximated by
  
 and has variance
 
- $$\textbf{Var}(y) \approx \operatorname{Var}\left(\log _{2}(r)\right) \approx \frac{\operatorname{Var}(r)}{\lambda^{2}}=\frac{1}{\lambda}+\phi$$  
+ $$\textbf{Var}(y) \approx \textbf{Var}\left(\log _{2}(r)\right) \approx \frac{\textbf{Var}(r)}{\lambda^{2}}=\frac{1}{\lambda}+\phi$$  
  
  following the Delta-method.
 The mean and variance of the normalized sequencing data is linked to the original mean and dispersion of the negative binomial data and can be modeled and estimated. 
