@@ -2,6 +2,13 @@ This is the repository of ComplexSim package, which is an R package for simulati
 
 The simulation function includes the Gaussian and Negative Binomial distributions and takes into consideration the treatment effect, time effect, subject level random effect as well as the sample correlations. 
 
+# Installation
+```{r}
+devtools::install_github("BEDApub/ComplexSim")
+```
+
+
+
 RNA sequencing data in discrete count unit can be described by a negative binomial distribution.  
  The following Delta method is introduced to illustrate the link between the mean and variance of the two distributions, which guarantees the equivalence of the two simulation functions.
 
