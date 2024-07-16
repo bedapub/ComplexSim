@@ -6,19 +6,27 @@ RNA sequencing data in discrete count unit can be described by a negative binomi
  The following Delta method is introduced to illustrate the link between the mean and variance of the two distributions, which guarantees the equivalence of the two simulation functions.
 
 Following the RNA sequencing procedure, we build the negative binomial model for the mapped read counts: 
+
 $$\mathrm{NB}(r,p): \, \mathrm{Pr}(X=k) = \binom{k+r-1}{k}\cdot(1-p)^{r} p^{k} .$$ 
+
 The mean and variance of this negative binomial distribution are 
+
 $$ \mu= \frac{p r}{1-p} \quad \text{ and } \quad \sigma^2 = \frac{pr}{(1-p)^2}\,. $$
+
 One important proposition of the gene expression count data is the over-despersion property. We can use the variance-mean ratio or taking the difference between the variance and the mean to quantify the dispersion. The ratio is given by
+
 $$ \frac{\sigma^2}{\mu} = \frac{1}{1-p} >1, $$
+
 and the difference is 
-\begin{align*}
+$$
  \sigma^2 - \mu = p\cdot \frac{pr}{(1-p)^2} = p \sigma^2 \geq 0\quad \text{or equivalently} \quad 
  \sigma^2 - \mu = \frac{1}{r} \cdot \frac{p^2 r^2}{(1-p)^2} = \frac{1}{r} \mu^2 \geq 0 \,. 
-\end{align*}
+$$
 From the ratio and the difference, it is obvious to see that the counts of mapped reads which follow the negative binomial distribution is over dispersed. 
 The variance can be decomposed to
+
 $$ \sigma^2 = \mu + \frac{1}{r} \mu^2 . $$
+
 If $r \to \infty$,\, $\sigma^2 = \mu$ corresponds to Poisson case. 
 
 Alternatively, one can normalize the count data by using the log-cpm described as follows. Let $\left(r_{gi}\right)_{G \times n}$ be the matrix of counts for $n$ RNA samples and $G$ genes.
