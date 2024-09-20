@@ -1,0 +1,130 @@
+---
+title: "User test file - Simulation for omics biomarker cross over studies"
+output:
+  word_document:
+    toc: yes
+    toc_depth: '3'
+  html_document:
+    theme: spacelab
+    mathjax: default
+    code_folding: hide
+    toc: yes
+    toc_depth: 3
+    number_sections: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: no
+  pdf_document:
+    toc: yes
+    toc_depth: '3'
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+author: Juliane
+editor_options:
+  chunk_output_type: console
+params:
+  echo: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  eval = TRUE, echo = params$echo, results = "asis",
+  message = FALSE, warning = FALSE, error = TRUE,
+  width = 120
+)
+
+```
+
+
+```{r}
+library(knitr)
+library(openxlsx)
+library(limma)
+# this should be loaded last
+library(tidyverse)
+
+# change ggplot theme
+theme_set(theme_bw())
+```
+
+
+```{r}
+
+pheno_data <- data.frame(
+  Sample = 1:48, 
+  Seq = rep(c("AB","BA"), each = 24),
+  Period = rep(c(0, 1, 2, 0, 1, 2), each = 8),
+  Treatment = rep(c("BL", "A", "B", "BL", "B", "A"), each = 8),
+  Subject = c(rep(1:8, 3), rep(9:16, 3))
+  )
+
+pheno_data %>% count(Seq, Treatment, Period)
+
+```
+
+```{r}
+#pak::pak("git::https://code.roche.com/PMDA/packages/ComplexSim.git")
+library(ComplexSim)
+library(parallel)
+
+ngene <- 10
+ntime <- pheno_data$Period %>% unique() %>% length()
+ntrt <- pheno_data$Seq %>% unique() %>% length()
+nrep <- (pheno_data$Subject %>% unique() %>% length()) / ntrt
+
+dat <- wrap_sim_DGEList(
+  n = nrep, # subjects per Seq
+  m = ntime,
+  q = ntrt,
+  N_gene = ngene,
+  # overall shift?
+  global_eff = rep(0, ngene),
+  trt_eff = rep(1, ngene),
+  trt_slope = rep(.5, ngene),
+  inter = rep(.1, ngene),
+  sigma = rep(1, ngene),
+  mu = rep(10, ngene),
+  # tau = NULL,
+  # act.cor = NULL,
+  # distribution = NULL,
+  SingleGroup = FALSE
+)
+
+
+
+```
+
+
+```{r}
+data1 <- wrap_design(nrep, ntime, ntrt)
+
+library(MASS)
+norm_counts <- wrap_simulation(
+      data = data1,
+      beta0 = 0,
+      beta1 = rep(1, ntrt),
+      beta2 = rep(.5, ntime),
+      lambda = matrix(data = 0.1, nrow = ntrt, ncol = ntime),
+      sigma = 1,
+      mu = c(0.5, 0.5),
+      # tau = tau_genewise,
+      # act.cor = act.cor_genewise,
+      SingleGroup = FALSE) %>%
+      dplyr::mutate(GENE = Exprs) %>%
+      rownames_to_column(., var = "SampleID") %>%
+      dplyr::select(-eij, -Exprs)
+
+```
+
+
+```{r}
+sim_DGEList <- wrap_sim_DGEList(n=nrep, 
+                                m=ntime, 
+                                q=ntrt, 
+                                N_gene = ngene, 
+                                trt_eff = matrix(rep(c(1,2), ngene), ncol=ngene), 
+                                SingleGroup=FALSE)
+```
+
+
+
+
